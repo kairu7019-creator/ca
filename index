@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>配信者</title>
+</head>
+<body background="ブル.jpg">
+  <button onclick="start()">配信開始</button>
+  <br>
+  <video id="local" autoplay muted playsinline></video>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let pc, stream;
+
+    async function start() {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+
+      local.srcObject = stream;
+
+      pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      });
+
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream);
+      });
+
+      pc.onicecandidate = e => {
+        if (e.candidate) socket.emit("candidate", e.candidate);
+      };
+
+      const offer = await pc.createOffer();
+
+      await pc.setLocalDescription(offer);
+      socket.emit("offer", offer);
+    }
+
+    socket.on("answer", async answer => {
+      await pc.setRemoteDescription(answer);
+    });
+
+    socket.on("candidate", c => {
+      pc.addIceCandidate(c);
+    });
+  </script>
+  <link rel="stylesheet" href="cam.css">
+</body>
+</html>
