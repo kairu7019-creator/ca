@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>視聴者</title>
+</head>
+<body>
+  <video id="remote" autoplay playsinline></video>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+const socket = io();
+const remote = document.getElementById("remote");
+
+const pc = new RTCPeerConnection({
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+});
+
+pc.ontrack = e => {
+  remote.srcObject = e.streams[0];
+};
+
+pc.onicecandidate = e => {
+  if (e.candidate) socket.emit("candidate", e.candidate);
+};
+
+socket.on("offer", async offer => {
+  await pc.setRemoteDescription(offer);
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit("answer", answer);
+});
+
+socket.on("candidate", c => {
+  pc.addIceCandidate(c);
+});
+</script>
+<link rel="stylesheet" href="cam.css">
+
+</body>
+</html>
+
+
